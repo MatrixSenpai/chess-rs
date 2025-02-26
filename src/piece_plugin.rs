@@ -1,6 +1,7 @@
 use bevy::prelude::*;
+use crate::board_plugin::Board;
 
-#[derive(Copy, Clone, Component, Reflect)]
+#[derive(Debug, PartialEq, Copy, Clone, Component, Reflect)]
 pub enum PieceType {
     King,
     Queen,
@@ -21,7 +22,7 @@ impl Into<usize> for PieceType {
         }
     }
 }
-#[derive(Copy, Clone, Component, Reflect)]
+#[derive(Debug, PartialEq, Copy, Clone, Component, Reflect)]
 pub enum PieceSide {
     White,
     Black,
@@ -42,25 +43,37 @@ impl std::ops::Add<PieceSide> for PieceType {
     }
 }
 
-#[derive(Bundle, Reflect)]
+#[derive(Component, Reflect)]
 pub struct Piece {
-    piece_type: PieceType,
-    piece_side: PieceSide,
+    pub piece_type: PieceType,
+    pub piece_side: PieceSide,
+    pub identifier: usize,
+}
+
+#[derive(Bundle, Reflect)]
+pub struct PieceBundle {
+    piece: Piece,
     sprite: Sprite,
     transform: Transform,
 }
-impl Piece {
-    pub fn new(image: Handle<Image>, layout: Handle<TextureAtlasLayout>, piece_type: PieceType, piece_side: PieceSide) -> Self {
+impl PieceBundle {
+    pub fn new(
+        identifier: usize,
+        image: Handle<Image>,
+        layout: Handle<TextureAtlasLayout>,
+        piece_type: PieceType,
+        piece_side: PieceSide
+    ) -> Self {
         let index = piece_type + piece_side;
 
         Self {
-            piece_type, piece_side,
+            piece: Piece { identifier, piece_type, piece_side },
             sprite: Sprite::from_atlas_image(image, TextureAtlas {
                 layout, index
             }),
             transform: Transform {
                 translation: Vec3::new(0.0, 0.0, 4.0),
-                scale: Vec3::new(1.0, 1.0, 0.0),
+                scale: Vec3::new(0.002, 0.002, 0.0),
                 ..default()
             },
         }
@@ -80,9 +93,12 @@ impl Plugin for PiecePlugin {
 
 fn setup_pieces(
     mut commands: Commands,
+    board: Single<Entity, With<Board>>,
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
+    let mut board_entity = commands.entity(*board);
+
     let texture = asset_server.load("img/pieces.png");
     let layout = TextureAtlasLayout::from_grid(
         UVec2::splat(44), 6, 2, Some(UVec2::new(0, 2)), None
@@ -90,5 +106,23 @@ fn setup_pieces(
 
     let layout = texture_atlas_layouts.add(layout);
 
-    commands.spawn(Piece::new(texture.clone(), layout.clone(), PieceType::Queen, PieceSide::Black));
+    let pieces = [
+        PieceType::Rook, PieceType::Knight, PieceType::Bishop,
+        PieceType::Queen, PieceType::King,
+        PieceType::Bishop, PieceType::Knight, PieceType::Rook,
+    ];
+
+    board_entity.with_children(|board| {
+        for (s, side) in [PieceSide::White, PieceSide::Black].into_iter().enumerate() {
+            for (i, piece) in pieces.into_iter().enumerate() {
+                let id = s * 8 + i;
+                board.spawn(PieceBundle::new(id, texture.clone(), layout.clone(), piece, side));
+            }
+
+            for i in 0..8 {
+                let id = (s + 2) * 8 + i;
+                board.spawn(PieceBundle::new(id, texture.clone(), layout.clone(), PieceType::Pawn, side));
+            }
+        }
+    });
 }
