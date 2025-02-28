@@ -1,5 +1,6 @@
 use bevy::prelude::*;
-use crate::board_plugin::Board;
+use bevy::window::PrimaryWindow;
+use crate::board_plugin::{Board, BoardSquare};
 
 #[derive(Debug, PartialEq, Copy, Clone, Component, Reflect)]
 pub enum PieceType {

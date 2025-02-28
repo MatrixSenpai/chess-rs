@@ -1,16 +1,20 @@
 use bevy::prelude::*;
+use bevy_inspector_egui::{prelude::*, quick::ResourceInspectorPlugin};
 use crate::piece_plugin::*;
 use crate::board_plugin::BoardSquare;
 
-#[derive(Debug, Clone, Reflect)]
+#[derive(Debug, Clone, Reflect, InspectorOptions)]
+#[reflect(InspectorOptions)]
 struct PieceInfo {
     piece_type: PieceType,
     piece_side: PieceSide,
+    #[inspector(min = 0, max = 63)]
     location: usize,
     identifier: usize,
 }
 
 #[derive(Resource, Reflect)]
+#[reflect(Resource)]
 struct GameState {
     pieces_locations: [Option<PieceInfo>; 32],
 }
@@ -63,6 +67,7 @@ impl Plugin for GameStatePlugin {
             .register_type::<PieceInfo>()
             .register_type::<GameState>()
             .init_resource::<GameState>()
+            .add_plugins(ResourceInspectorPlugin::<GameState>::default())
             .add_systems(Update, position_pieces);
     }
 }
